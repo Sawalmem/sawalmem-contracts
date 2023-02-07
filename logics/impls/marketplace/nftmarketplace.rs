@@ -28,7 +28,7 @@ pub trait Internal {
 
     fn get_next_minimum_bid(&self, address: AccountId, token_id: Id) -> Balance;
 
-    fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance);
+    fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance) -> Result<(),MarketplaceError>;
 }
 
 impl<T> NFTMarketplace for T
@@ -60,7 +60,16 @@ where
         self.data::<Data>().items.get(&(address, token_id)).unwrap().next_min_bid
     }
 
-    default fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance) {
-        
+    default fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance)
+    -> Result<(),MarketplaceError> {
+        let mut item = self.data::<Data>().items.get(&(address, token_id)).unwrap();
+        let prev_bidder = item.highest_bidder;
+        let prev_bid = item.highest_bid;
+
+        Self::env().transfer(prev_bidder,prev_bid).map_err(|_| MarketplaceError::TransferToBidderFailed)?;
+
+        item.highest_bid = new_bid_amount;
+        item.highest_bidder = new_bidder;
+        Ok(())
     }
 }

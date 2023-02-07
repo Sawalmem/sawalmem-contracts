@@ -46,9 +46,10 @@ where
         let mint_id = self.data::<Data>().last_token_id + 1;
 
         self.data::<psp34::Data<enumerable::Balances>>()
-            ._mint_to(to, Id::U64(mint_id))?;
+            ._mint_to(to.clone(), Id::U64(mint_id))?;
         self.data::<Data>().last_token_id += 1;
         self.data::<Data>().royalty.insert(&mint_id,&royalty);
+        self.data::<Data>().creator.insert(&mint_id,&to);
         self.data::<Data>().token_uri.insert(&mint_id,&token_uri);
         Ok(())
     }
@@ -73,6 +74,13 @@ where
         self.token_exists(Id::U64(token_id))?;
         let royalty = self.data::<Data>().royalty.get(&token_id).unwrap();
         Ok(royalty)
+    }
+
+    default fn get_royalty_info(&mut self, token_id: u64) -> Result<(u16,AccountId),PSP34Error> {
+        self.token_exists(Id::U64(token_id))?;
+        let royalty = self.data::<Data>().royalty.get(&token_id).unwrap();
+        let creator = self.data::<Data>().creator.get(&token_id).unwrap();
+        Ok((royalty,creator))
     }
 }
 

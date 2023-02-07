@@ -1,6 +1,7 @@
 use openbrush::{
     storage::Mapping,
     traits::{
+        AccountId,
         Balance,
         String,
     },
@@ -14,6 +15,7 @@ pub type TokenId = u64;
 pub struct Data {
     pub last_token_id: u64,
     pub royalty: Mapping<TokenId,u16>,
+    pub creator: Mapping<TokenId,AccountId>,
     pub token_uri: Mapping<TokenId,String>,
 }
 

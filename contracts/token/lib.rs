@@ -108,6 +108,7 @@ pub mod token {
             assert_eq!(contract.custom_mint.last_token_id, 1);
 			assert_eq!(contract.get_token_uri(1),Ok(PreludeString::from("Token1")));
 			assert_eq!(contract.get_token_royalty(1),Ok(royalty));
+			assert_eq!(contract.get_royalty_info(1),Ok((royalty,accounts.bob)));
 		}
 
 		fn default_accounts() -> test::DefaultAccounts<ink_env::DefaultEnvironment> {

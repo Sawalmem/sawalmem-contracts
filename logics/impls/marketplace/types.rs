@@ -59,6 +59,8 @@ pub enum MarketplaceError {
     TokenNotForDirectSale,
     // Incorrect Buy Price
     IncorrectBuyPrice,
+    // Transfer To Bidder Failed
+    TransferToBidderFailed,
 }
 
 #[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]
