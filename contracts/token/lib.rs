@@ -52,6 +52,7 @@ pub mod token {
 				instance._set_attribute(collection_id.clone(), String::from("symbol"), symbol);
 				instance._set_attribute(collection_id, String::from("baseUri"), base_uri);
 				instance.custom_mint.last_token_id = 0;
+				instance.custom_mint.creator = instance.env().caller();
 			})
 		}
 
@@ -108,7 +109,7 @@ pub mod token {
             assert_eq!(contract.custom_mint.last_token_id, 1);
 			assert_eq!(contract.get_token_uri(1),Ok(PreludeString::from("Token1")));
 			assert_eq!(contract.get_token_royalty(1),Ok(royalty));
-			assert_eq!(contract.get_royalty_info(1),Ok((royalty,accounts.bob)));
+			assert_eq!(contract.get_royalty_info(1),Ok((royalty,accounts.alice)));
 		}
 
 		fn default_accounts() -> test::DefaultAccounts<ink_env::DefaultEnvironment> {

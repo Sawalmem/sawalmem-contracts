@@ -35,6 +35,10 @@ pub struct Data {
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum MarketplaceError {
+    // Token Does Not Exist
+    TokenDoesNotExist,
+    // Token AlreadyExists
+    TokenAlreadyExists,
     //Token Already on Sale
     TokenAlreadyOnSale,
     //Not The Owner
@@ -61,6 +65,8 @@ pub enum MarketplaceError {
     IncorrectBuyPrice,
     // Transfer To Bidder Failed
     TransferToBidderFailed,
+    // Transfer To Contract Failed
+    TransferToContractFailed,
 }
 
 #[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]
@@ -71,12 +77,14 @@ pub enum MarketplaceError {
 pub struct AuctionItem {
     pub owner: AccountId,
     pub buy_price: Balance,
-    pub seller: AccountId,
+    pub seller: Option<AccountId>,
     pub highest_bid: Balance,
-    pub highest_bidder: AccountId,
+    pub highest_bidder: Option<AccountId>,
     pub min_bid: Balance,
     pub next_min_bid: Balance,
     pub bid_end_time: Timestamp,
     pub royalties: u16,
     pub on_sale: bool,
+    pub direct: bool,
 }
+

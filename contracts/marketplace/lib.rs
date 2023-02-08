@@ -11,9 +11,7 @@ pub mod marketplace {
     use openbrush::traits::Storage;
     
     use custom_mint_pkg::{
-        impls::marketplace::{
-            *,
-        },
+        impls::marketplace::*,
         traits::marketplace::*,
     };
 
