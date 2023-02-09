@@ -40,7 +40,7 @@ pub mod marketplace {
         
     }
 
-    impl NFTMarketPlace for MarketPlaceContract {}
+    impl NFTMarketplace for MarketplaceContract {}
 
     #[cfg(test)]
     mod Tests {

@@ -12,9 +12,6 @@ use openbrush::{
     },
 };
 
-#[openbrush::wrapper]
-pub type MarketRef = dyn NFTMarketplace;
-
 #[openbrush::trait_definition]
 pub trait NFTMarketplace {
 
@@ -23,6 +20,9 @@ pub trait NFTMarketplace {
 
     #[ink(message)]
     fn create_direct_sale(&mut self,address: AccountId, token_id: Id, price: Balance) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn create_auction(&mut self,address: AccountId, token_id: Id, price: Balance, min_bid: Balance, duration: Timestamp) -> Result<(), MarketplaceError>;
 
     #[ink(message)]
     fn get_fee_recipient(&self) -> AccountId;

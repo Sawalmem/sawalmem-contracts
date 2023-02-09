@@ -33,6 +33,8 @@ pub trait Internal {
     fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool;
 
     fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError>;
+
+    fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError>;
 }
 
 impl<T> NFTMarketplace for T
@@ -87,6 +89,36 @@ where
         Ok(())
     }
 
+    default fn create_auction(&mut self,address: AccountId, token_id: Id, price: Balance, min_bid: Balance, duration: Timestamp) -> Result<(), MarketplaceError> {
+        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+        if item.owner != Self::env().caller() {
+            return Err(MarketplaceError::NotTheOwner)
+        }
+        if item.on_sale == true {
+            return Err(MarketplaceError::TokenAlreadyOnSale)
+        }
+        if price == 0 {
+            return Err(MarketplaceError::IneligibleBuyPrice)
+        }
+        if duration == 0 {
+            return Err(MarketplaceError::IneligibleBidDuration)
+        }
+        // Register NFT contract to marketplace and enable approval to all
+        let this = Self::env().account_id();
+        match PSP34Ref::transfer(&address,this,token_id.clone(),ink_prelude::vec::Vec::new()) {
+            Ok(()) => {
+                item.buy_price = price;
+                item.seller = Some(Self::env().caller());
+                item.on_sale = true;
+                item.direct = false;
+                item.min_bid = min_bid;
+                item.bid_end_time = duration + Timestamp::default();
+            },
+            Err(_) => return Err(MarketplaceError::TransferToContractFailed)
+        }
+        Ok(())
+    }
+
     default fn get_fee_recipient(&self) -> AccountId {
         self.data::<Data>().market_fee_recipient
     }
@@ -131,6 +163,27 @@ where
     default fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError> {
         let market_fees: Balance = u128::from(self.data::<Data>().fee) * sales_price / 10000;
         
+        Ok(())
+    }
+
+    default fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError> {
+        let token_owner = PSP34Ref::owner_of(&address.clone(), token_id.clone())
+            .ok_or(MarketplaceError::TokenDoesNotExist)?;
+        self.data::<Data>().items.insert(&(address, token_id),
+        &AuctionItem{
+            owner: token_owner,
+            buy_price: 0,
+            seller: None,
+            highest_bid: 0,
+            highest_bidder: None,
+            min_bid: 0,
+            next_min_bid: 0,
+            bid_end_time: 0,
+            royalties: 0,
+            on_sale: false,
+            direct: false,
+        });
+
         Ok(())
     }
 }
