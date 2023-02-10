@@ -23,3 +23,28 @@ Other methods
     fn get_royalty_info(&mut self, token_id: u64) -> Result<(u16,AccountId),PSP34Error>;
     
 ```
+
+
+2. Marketplace
+
+```
+Constructor pub fn new(market_fee_recipient: AccountId) -> Self 
+```
+
+```
+    #[ink(message)]
+    fn create_market_item(&mut self,address: AccountId, token_id: Id)  -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn create_direct_sale(&mut self,address: AccountId, token_id: Id, price: Balance) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn create_auction(&mut self,address: AccountId, token_id: Id, price: Balance, min_bid: Balance, duration: Timestamp) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn get_fee_recipient(&self) -> AccountId;
+
+    #[ink(message)]
+    fn get_marketplace_fee(&self) -> u16;
+    
+ ```
