@@ -1,6 +1,7 @@
 use crate::impls::marketplace::types::{
     MarketplaceError,
 };
+use ink_env::Hash;
 
 use openbrush::{
     contracts::psp34::Id,
@@ -14,6 +15,14 @@ use openbrush::{
 
 #[openbrush::trait_definition]
 pub trait NFTMarketplace {
+    #[ink(message)]
+    fn create_collection(&mut self, name: String, symbol: String, collection_hash: String ) -> Result<AccountId, MarketplaceError>;
+
+    #[ink(message)]
+    fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn get_contract_hash(&self) -> Hash;
 
     #[ink(message)]
     fn create_market_item(&mut self,address: AccountId, token_id: Id)  -> Result<(), MarketplaceError>;

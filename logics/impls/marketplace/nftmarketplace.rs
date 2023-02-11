@@ -1,3 +1,26 @@
+// This code uses ASTAR Network NFT marketplace code. The copyright notice follows
+
+// Copyright (c) 2022 Astar Network
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the"Software"),
+// to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 use crate::{
     impls::marketplace::types::{
         Data,
@@ -6,6 +29,10 @@ use crate::{
     },
     traits::marketplace::NFTMarketplace,
     traits::custom_mint::TokenRef,
+};
+use ink_env::{
+    hash::Blake2x256,
+    Hash,
 };
 use openbrush::{
     contracts::{
@@ -32,15 +59,49 @@ pub trait Internal {
 
     fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool;
 
-    fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError>;
-
     fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError>;
+
+    fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) 
+    -> Result<(Balance, Balance, Balance, AccountId),MarketplaceError>;
 }
 
 impl<T> NFTMarketplace for T
 where
     T: Storage<Data> + Storage<ownable::Data> + Storage<reentrancy_guard::Data>,
 {
+    default fn create_collection(&mut self, name: String, symbol: String, collection_hash: String ) -> Result<AccountId, MarketplaceError> {
+        let contract_hash = self.data::<Data>().contract_hash;
+        if contract_hash == Hash::default() {
+            return Err(MarketplaceError::ContractHashNotSet)
+        }
+
+        let collection_count = self.data::<Data>().collection_count.saturating_add(1);
+        let caller = Self::env().caller();
+        let salt = Self::env().hash_encoded::<Blake2x256, _>(&(caller, collection_count));
+
+        let nft = TokenRef::new(name,symbol,collection_hash)
+        .endowment(0)
+        .code_hash(contract_hash)
+        .salt_bytes(&salt[..4])
+        .instantiate()
+        .map_err(|_| MarketplaceError::TokenInstantiationFailed)?;
+
+        let contract_address = nft.to_account_id();
+
+        Ok(contract_address)
+    }
+
+    #[modifiers(only_owner)]
+    default fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError> {
+        self.data::<Data>().contract_hash = contract_hash;
+
+        Ok(())
+    }
+
+    default fn get_contract_hash(&self) -> Hash {
+        self.data::<Data>().contract_hash
+    }
+
     default fn create_market_item(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError> {
         if self.check_token_exists(address,token_id.clone()) {
             return Err(MarketplaceError::TokenAlreadyExists)
@@ -119,6 +180,10 @@ where
         Ok(())
     }
 
+    default fn close_direct_sale(&mut self,address: AccountId, token_id: Id, price: Balance) -> Result<(), MarketplaceError> {
+        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+    }
+
     default fn get_fee_recipient(&self) -> AccountId {
         self.data::<Data>().market_fee_recipient
     }
@@ -160,10 +225,13 @@ where
         self.data::<Data>().items.get(&(address, token_id)).is_some()
     }
 
-    default fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError> {
+    default fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) 
+    -> Result<(Balance, Balance, Balance, AccountId),MarketplaceError> {
         let market_fees: Balance = u128::from(self.data::<Data>().fee) * sales_price / 10000;
+        let Ok((royalties,creator)) = TokenRef::get_royalty_info(&address,token_id,sales_price);
+        let seller_share = sales_price - market_fees - royalties;
         
-        Ok(())
+        Ok((seller_share,royalties,market_fees,creator))
     }
 
     default fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError> {

@@ -1,3 +1,4 @@
+use ink_env::Hash;
 use ink_storage::traits::{
     PackedLayout,
     SpreadLayout,
@@ -30,11 +31,17 @@ pub struct Data {
     pub fee: u16,
     pub market_fee_recipient: AccountId,
     pub bid_inc_percent: u128,
+    pub contract_hash: Hash,
+    pub collection_count: u64,
 }
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum MarketplaceError {
+    /// Caller is not a marketplace owner.
+    OwnableError(OwnableError),
+    /// Caller is tryin to make second call while 1st one is still executing.
+    ReentrancyError(ReentrancyGuardError),
     // Token Does Not Exist
     TokenDoesNotExist,
     // Token AlreadyExists
@@ -67,6 +74,10 @@ pub enum MarketplaceError {
     TransferToBidderFailed,
     // Transfer To Contract Failed
     TransferToContractFailed,
+    // Contract Hash Not Set
+    ContractHashNotSet,
+    // TokenInstantiationFailed
+    TokenInstantiationFailed,
 }
 
 #[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]
@@ -88,3 +99,14 @@ pub struct AuctionItem {
     pub direct: bool,
 }
 
+impl From<OwnableError> for MarketplaceError {
+    fn from(error: OwnableError) -> Self {
+        MarketplaceError::OwnableError(error)
+    }
+}
+
+impl From<ReentrancyGuardError> for MarketplaceError {
+    fn from(error: ReentrancyGuardError) -> Self {
+        MarketplaceError::ReentrancyError(error)
+    }
+}

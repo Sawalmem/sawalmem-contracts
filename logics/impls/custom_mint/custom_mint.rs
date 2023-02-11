@@ -12,6 +12,7 @@ pub use crate::traits::custom_mint::CustomMint;
 use openbrush::{
     contracts::{
         ownable::*,
+        psp34::Id,
         psp34::extensions::{
             enumerable::*,
             metadata::*,
@@ -48,8 +49,8 @@ where
         self.data::<psp34::Data<enumerable::Balances>>()
             ._mint_to(to.clone(), Id::U64(mint_id))?;
         self.data::<Data>().last_token_id += 1;
-        self.data::<Data>().royalty.insert(&mint_id,&royalty);
-        self.data::<Data>().token_uri.insert(&mint_id,&token_uri);
+        self.data::<Data>().royalty.insert(&Id::U64(mint_id),&royalty);
+        self.data::<Data>().token_uri.insert(&Id::U64(mint_id),&token_uri);
         Ok(())
     }
 
@@ -63,21 +64,21 @@ where
         Ok(())
     }
 
-    default fn get_token_uri(&mut self, token_id: u64) -> Result<PreludeString, PSP34Error> {
-        self.token_exists(Id::U64(token_id))?;
+    default fn get_token_uri(&mut self, token_id: Id) -> Result<PreludeString, PSP34Error> {
+        self.token_exists(token_id)?;
         let uri = PreludeString::from_utf8(self.data::<Data>().token_uri.get(&token_id).unwrap()).unwrap();
         Ok(uri)
     }
 
-    default fn get_token_royalty(&mut self, token_id: u64) -> Result<u16, PSP34Error> {
-        self.token_exists(Id::U64(token_id))?;
+    default fn get_token_royalty(&mut self, token_id: Id) -> Result<u16, PSP34Error> {
+        self.token_exists(token_id)?;
         let royalty = self.data::<Data>().royalty.get(&token_id).unwrap();
         Ok(royalty)
     }
 
-    default fn get_royalty_info(&mut self, token_id: u64) -> Result<(u16,AccountId),PSP34Error> {
-        self.token_exists(Id::U64(token_id))?;
-        let royalty = self.data::<Data>().royalty.get(&token_id).unwrap();
+    default fn get_royalty_info(&mut self, token_id: Id, price: Balance) -> Result<(Balance,AccountId),PSP34Error> {
+        self.token_exists(token_id)?;
+        let royalty = u128::from(self.data::<Data>().royalty.get(&token_id).unwrap()) * price / 10000;
         let creator = self.data::<Data>().creator;
         Ok((royalty,creator))
     }

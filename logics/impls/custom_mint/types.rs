@@ -1,5 +1,6 @@
 use openbrush::{
     storage::Mapping,
+    contracts::psp34::Id,
     traits::{
         AccountId,
         Balance,
@@ -8,7 +9,7 @@ use openbrush::{
 };
 pub const STORAGE_KEY: u32 = openbrush::storage_unique_key!(Data);
 
-pub type TokenId = u64;
+pub type TokenId = Id;
 
 #[derive(Default, Debug)]
 #[openbrush::upgradeable_storage(STORAGE_KEY)]
