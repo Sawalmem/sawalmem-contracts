@@ -33,6 +33,9 @@ pub trait NFTMarketplace {
     #[ink(message)]
     fn create_auction(&mut self,address: AccountId, token_id: Id, price: Balance, min_bid: Balance, duration: Timestamp) -> Result<(), MarketplaceError>;
 
+    #[ink(message,payable)]
+    fn close_direct_sale(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
     #[ink(message)]
     fn get_fee_recipient(&self) -> AccountId;
 

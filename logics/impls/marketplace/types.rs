@@ -72,8 +72,14 @@ pub enum MarketplaceError {
     IncorrectBuyPrice,
     // Transfer To Bidder Failed
     TransferToBidderFailed,
+    // Transfer To Owner Failed
+    TransferToOwnerFailed,
     // Transfer To Contract Failed
     TransferToContractFailed,
+    // Marketplace Fee Transfer Failed
+    MarketplaceFeeTransferFailed,
+    // Royalties Transfer Failed
+    RoyaltiesTransferFailed,
     // Contract Hash Not Set
     ContractHashNotSet,
     // TokenInstantiationFailed
