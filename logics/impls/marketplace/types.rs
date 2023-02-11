@@ -84,6 +84,8 @@ pub enum MarketplaceError {
     ContractHashNotSet,
     // TokenInstantiationFailed
     TokenInstantiationFailed,
+    // Minimum Bid Already Met
+    MinimumBidAlreadyMet,
 }
 
 #[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]

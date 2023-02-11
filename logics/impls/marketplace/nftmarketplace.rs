@@ -217,6 +217,35 @@ where
         Ok(())
     }
 
+    default fn withdraw_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError> {
+        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+        let caller = Self::env().caller();
+        if item.seller.unwrap() != caller {
+            return Err(MarketplaceError::NotTheOwner)
+        }
+        if item.on_sale == false {
+            return Err(MarketplaceError::TokenNotForSale)
+        }
+
+        if item.direct == true {
+            match PSP34Ref::transfer(&address,caller,token_id.clone(),ink_prelude::vec::Vec::new()) {
+                Ok(()) => {self.set_auction_end(address.clone(),token_id.clone())?;
+                    Ok(())},
+                Err(_) => return Err(MarketplaceError::TransferToOwnerFailed)
+            }
+        } else {
+            match item.highest_bidder {
+                Some(highest_bidder) => return Err(MarketplaceError::MinimumBidAlreadyMet),
+                None => {match PSP34Ref::transfer(&address,caller,token_id.clone(),ink_prelude::vec::Vec::new()) {
+                        Ok(()) => {self.set_auction_end(address.clone(),token_id.clone())?;
+                            Ok(())},
+                        Err(_) => return Err(MarketplaceError::TransferToOwnerFailed)
+                    }
+                }
+            }
+        }
+    }
+
     default fn get_fee_recipient(&self) -> AccountId {
         self.data::<Data>().market_fee_recipient
     }
