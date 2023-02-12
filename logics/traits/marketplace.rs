@@ -16,7 +16,7 @@ use openbrush::{
 #[openbrush::trait_definition]
 pub trait NFTMarketplace {
     #[ink(message)]
-    fn create_collection(&mut self, name: String, symbol: String, collection_hash: String ) -> Result<AccountId, MarketplaceError>;
+    fn create_collection(&mut self, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<AccountId, MarketplaceError>;
 
     #[ink(message)]
     fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError>;

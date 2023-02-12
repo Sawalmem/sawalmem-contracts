@@ -10,7 +10,7 @@ pub mod marketplace {
     use openbrush::contracts::reentrancy_guard::*;
     use openbrush::traits::Storage;
     
-    use custom_mint_pkg::{
+    use marketplace_pkg::{
         impls::marketplace::*,
         traits::marketplace::*,
     };
@@ -52,7 +52,7 @@ pub mod marketplace {
             contracts::psp34::Id,
             traits::String,
         };
-        use custom_mint_pkg::impls::marketplace::types::MarketplaceError;
+        use marketplace_pkg::impls::marketplace::types::MarketplaceError;
 
         #[ink::test]
         fn new_works() {

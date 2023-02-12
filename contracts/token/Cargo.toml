@@ -17,7 +17,7 @@ scale-info = { version = "2", default-features = false, features = ["derive"], o
 
 openbrush = { tag = "v2.3.0", git = "https://github.com/Supercolony-net/openbrush-contracts", default-features = false, features = ["ownable", "psp34"] }
 
-custom_mint_pkg = { path = "../../logics", default-features = false }
+custom_mint_pkg = { git = "https://github.com/polkadotrafat/custom_mint", default-features = false }
 
 [lib]
 name = "token"
@@ -25,6 +25,7 @@ path = "lib.rs"
 crate-type = [
     # Used for normal contract Wasm blobs.
     "cdylib",
+    "rlib",
 ]
 
 [features]

@@ -28,6 +28,7 @@ pub const STORAGE_KEY: u32 = openbrush::storage_unique_key!(Data);
 #[openbrush::upgradeable_storage(STORAGE_KEY)]
 pub struct Data {
     pub items: Mapping<(AccountId, Id), AuctionItem>,
+    pub collections: Mapping<AccountId, Collection>,
     pub fee: u16,
     pub market_fee_recipient: AccountId,
     pub bid_inc_percent: u128,
@@ -107,6 +108,16 @@ pub struct AuctionItem {
     pub royalties: u16,
     pub on_sale: bool,
     pub direct: bool,
+}
+
+#[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]
+#[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
+)]
+pub struct Collection {
+    pub creator: Option<AccountId>,
+    pub royalty: u16,
 }
 
 impl From<OwnableError> for MarketplaceError {

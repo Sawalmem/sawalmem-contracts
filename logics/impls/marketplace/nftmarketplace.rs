@@ -26,9 +26,9 @@ use crate::{
         Data,
         AuctionItem,
         MarketplaceError,
+        Collection,
     },
     traits::marketplace::NFTMarketplace,
-    traits::custom_mint::TokenRef,
 };
 use ink_env::{
     hash::Blake2x256,
@@ -49,6 +49,8 @@ use openbrush::{
         Timestamp,
     },
 };
+use ink_lang::ToAccountId;
+use token::token::TokenRef;
 
 pub trait Internal {
     fn calculate_next_minimum_bid(&self, address: AccountId, token_id: Id);
@@ -64,14 +66,14 @@ pub trait Internal {
     fn finalize_sale(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError>;
 
     fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) 
-    -> Result<(Balance, Balance, Balance, AccountId),MarketplaceError>;
+    -> (Balance, Balance, Balance, AccountId);
 }
 
 impl<T> NFTMarketplace for T
 where
     T: Storage<Data> + Storage<ownable::Data> + Storage<reentrancy_guard::Data>,
 {
-    default fn create_collection(&mut self, name: String, symbol: String, collection_hash: String ) -> Result<AccountId, MarketplaceError> {
+    default fn create_collection(&mut self, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<AccountId, MarketplaceError> {
         let contract_hash = self.data::<Data>().contract_hash;
         if contract_hash == Hash::default() {
             return Err(MarketplaceError::ContractHashNotSet)
@@ -79,7 +81,7 @@ where
 
         let collection_count = self.data::<Data>().collection_count.saturating_add(1);
         let caller = Self::env().caller();
-        let salt = Self::env().hash_encoded::<Blake2x256, _>(&(caller, collection_count));
+        let salt = Self::env().hash_encoded::<Blake2x256, _>(&(caller.clone(), collection_count));
 
         let nft = TokenRef::new(name,symbol,collection_hash)
         .endowment(0)
@@ -89,6 +91,13 @@ where
         .map_err(|_| MarketplaceError::TokenInstantiationFailed)?;
 
         let contract_address = nft.to_account_id();
+        self.data::<Data>().collections.insert(
+            &contract_address,
+            &Collection {
+                creator: Some(caller.clone()),
+                royalty: royalty,
+            },
+        );
 
         Ok(contract_address)
     }
@@ -204,7 +213,7 @@ where
     }
 
     default fn withdraw_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError> {
-        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+        let item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
         let caller = Self::env().caller();
         if item.seller.unwrap() != caller {
             return Err(MarketplaceError::NotTheOwner)
@@ -233,7 +242,7 @@ where
     }
 
     default fn make_bid(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>  {
-        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+        let item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
         if item.on_sale == false {
             return Err(MarketplaceError::TokenNotForSale)
         }
@@ -334,7 +343,7 @@ where
         if buyer == owner {
             return Err(MarketplaceError::NotAuthorized)
         }
-        let Ok((seller_share,royalties,market_fees,creator)) = self.get_sales_breakdown(address.clone(),token_id.clone(),sales_price);
+        let (seller_share,royalties,market_fees,creator) = self.get_sales_breakdown(address.clone(),token_id.clone(),sales_price);
 
         match PSP34Ref::transfer(&address,buyer,token_id.clone(),ink_prelude::vec::Vec::new()) {
             Ok(()) => {
@@ -351,12 +360,15 @@ where
     }
 
     default fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) 
-    -> Result<(Balance, Balance, Balance, AccountId),MarketplaceError> {
+    -> (Balance, Balance, Balance, AccountId) {
         let market_fees: Balance = u128::from(self.data::<Data>().fee) * sales_price / 10000;
-        let Ok((royalties,creator)) = TokenRef::get_royalty_info(&address,token_id,sales_price);
+        let collection = self.data::<Data>().collections.get(&address).unwrap();
+        let creator = collection.creator.unwrap();
+        let royalties = u128::from(collection.royalty) * sales_price /10000;
+        //let Ok((royalties,creator)) = TokenRef::get_royalty_info(&address,token_id,sales_price);
         let seller_share = sales_price - market_fees - royalties;
         
-        Ok((seller_share,royalties,market_fees,creator))
+        (seller_share,royalties,market_fees,creator)
     }
 
     default fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError> {
