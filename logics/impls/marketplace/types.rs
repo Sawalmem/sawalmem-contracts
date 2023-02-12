@@ -68,6 +68,8 @@ pub enum MarketplaceError {
     NotAuthorized,
     //Token Not For Direct Sale
     TokenNotForDirectSale,
+    // Token Only For Direct Sale
+    TokenOnlyForDirectSale,
     // Incorrect Buy Price
     IncorrectBuyPrice,
     // Transfer To Bidder Failed

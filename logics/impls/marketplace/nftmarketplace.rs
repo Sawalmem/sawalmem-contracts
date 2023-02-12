@@ -61,6 +61,8 @@ pub trait Internal {
 
     fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError>;
 
+    fn finalize_sale(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError>;
+
     fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) 
     -> Result<(Balance, Balance, Balance, AccountId),MarketplaceError>;
 }
@@ -173,6 +175,7 @@ where
                 item.on_sale = true;
                 item.direct = false;
                 item.min_bid = min_bid;
+                item.next_min_bid = min_bid;
                 item.bid_end_time = duration + Timestamp::default();
             },
             Err(_) => return Err(MarketplaceError::TransferToContractFailed)
@@ -193,24 +196,7 @@ where
             return Err(MarketplaceError::IneligibleBuyPrice)
         }
 
-        let owner = PSP34Ref::owner_of(&address, token_id.clone()).ok_or(MarketplaceError::TokenDoesNotExist)?;
-        let buyer = Self::env().caller();
-        if buyer == owner {
-            return Err(MarketplaceError::NotAuthorized)
-        }
-        let Ok((seller_share,royalties,market_fees,creator)) = self.get_sales_breakdown(address.clone(),token_id.clone(),value);
-
-        match PSP34Ref::transfer(&address,buyer,token_id.clone(),ink_prelude::vec::Vec::new()) {
-            Ok(()) => {
-                Self::env().transfer(owner, seller_share)
-                    .map_err(|_| MarketplaceError::TransferToOwnerFailed)?;
-                Self::env().transfer(self.data::<Data>().market_fee_recipient, market_fees)
-                    .map_err(|_| MarketplaceError::MarketplaceFeeTransferFailed)?;
-                Self::env().transfer(creator, royalties)
-                    .map_err(|_| MarketplaceError::RoyaltiesTransferFailed)?;
-            },
-            Err(_) => return Err(MarketplaceError::TransferToContractFailed)
-        }
+        self.finalize_sale(address.clone(),token_id.clone(),value);
 
         self.set_auction_end(address.clone(),token_id.clone())?;
 
@@ -244,6 +230,61 @@ where
                 }
             }
         }
+    }
+
+    default fn make_bid(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>  {
+        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+        if item.on_sale == false {
+            return Err(MarketplaceError::TokenNotForSale)
+        }
+
+        if item.bid_end_time < Timestamp::default() {
+            return Err(MarketplaceError::AuctionExpired)
+        }
+        let value = Self::env().transferred_value();
+
+        if value < item.next_min_bid {
+            return Err(MarketplaceError::MinimumBidNotMet)
+        }
+
+        if value >= item.buy_price {
+            self.update_highest_bid(address.clone(),token_id.clone(),Self::env().caller(),value);
+            self.finalize_sale(address.clone(),token_id.clone(),value);
+
+            self.set_auction_end(address.clone(),token_id.clone())?;
+
+            Ok(())
+        } else {
+            self.update_highest_bid(address.clone(),token_id.clone(),Self::env().caller(),value);
+            self.calculate_next_minimum_bid(address.clone(),token_id.clone());
+            Ok(())
+        }
+    }
+
+    default fn settle_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError> {
+        let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
+        if item.on_sale == false {
+            return Err(MarketplaceError::TokenNotForSale)
+        }
+        if item.direct == true {
+            return Err(MarketplaceError::TokenOnlyForDirectSale)
+        }
+        if item.bid_end_time >= Timestamp::default() {
+            return Err(MarketplaceError::AuctionOngoing)
+        }
+
+        if item.highest_bidder == None {
+            return Err(MarketplaceError::NoValidBids)
+        }
+
+        let value = item.highest_bid;
+
+        self.finalize_sale(address.clone(),token_id.clone(),value);
+
+        self.set_auction_end(address.clone(),token_id.clone())?;
+
+        Ok(())
+
     }
 
     default fn get_fee_recipient(&self) -> AccountId {
@@ -285,6 +326,28 @@ where
 
     default fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool {
         self.data::<Data>().items.get(&(address, token_id)).is_some()
+    }
+
+    default fn finalize_sale(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError> {
+        let owner = PSP34Ref::owner_of(&address, token_id.clone()).ok_or(MarketplaceError::TokenDoesNotExist)?;
+        let buyer = Self::env().caller();
+        if buyer == owner {
+            return Err(MarketplaceError::NotAuthorized)
+        }
+        let Ok((seller_share,royalties,market_fees,creator)) = self.get_sales_breakdown(address.clone(),token_id.clone(),sales_price);
+
+        match PSP34Ref::transfer(&address,buyer,token_id.clone(),ink_prelude::vec::Vec::new()) {
+            Ok(()) => {
+                Self::env().transfer(owner, seller_share)
+                    .map_err(|_| MarketplaceError::TransferToOwnerFailed)?;
+                Self::env().transfer(self.data::<Data>().market_fee_recipient, market_fees)
+                    .map_err(|_| MarketplaceError::MarketplaceFeeTransferFailed)?;
+                Self::env().transfer(creator, royalties)
+                    .map_err(|_| MarketplaceError::RoyaltiesTransferFailed)?;
+                Ok(())
+            },
+            Err(_) => return Err(MarketplaceError::TransferToContractFailed)
+        }
     }
 
     default fn get_sales_breakdown(&self, address: AccountId, token_id: Id, sales_price: Balance) 

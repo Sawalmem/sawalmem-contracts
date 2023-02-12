@@ -39,6 +39,12 @@ pub trait NFTMarketplace {
     #[ink(message)]
     fn withdraw_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
 
+    #[ink(message,payable)]
+    fn make_bid(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn settle_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
     #[ink(message)]
     fn get_fee_recipient(&self) -> AccountId;
 
