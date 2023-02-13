@@ -69,6 +69,45 @@ pub mod marketplace {
             assert_eq!(marketplace.get_marketplace_fee(), 200);
         }
 
+        #[ink::test]
+        fn add_collection_works() {
+            let mut marketplace = init_contract();
+            //add_collection(&mut self, address: AccountId, name: String, symbol: String, collection_hash: String, royalty: u16 )
+
+            assert_eq!(marketplace.get_collection_count(),0);
+
+            let name = String::from("Test Collection");
+            let symbol = String::from("TST");
+            let hash = String::from("https://ipfs.io/aaa");
+            let royalty: u16 = 150;
+
+            assert!(marketplace.add_collection(contract_address(),name,symbol,hash,royalty).is_ok());
+
+            assert_eq!(marketplace.get_collection_count(),1);
+        }
+
+        #[ink::test]
+        fn create_market_item_works() {
+            let mut marketplace = init_contract();
+
+            let name = String::from("Test Collection");
+            let symbol = String::from("TST");
+            let hash = String::from("https://ipfs.io/aaa");
+            let royalty: u16 = 150;
+
+            assert!(marketplace.add_collection(contract_address(),name,symbol,hash,royalty).is_ok());
+            assert!(marketplace.create_market_item(contract_address(),Id::U64(3)).is_ok());
+        }
+
+        #[ink::test]
+        fn set_get_contract_hash_works() {
+            let mut marketplace = init_contract();
+            let hash = Hash::try_from([1; 32]).unwrap();
+
+            assert!(marketplace.set_contract_hash(hash).is_ok());
+            assert_eq!(marketplace.get_contract_hash(),hash);
+        }
+
         fn init_contract() -> MarketplaceContract {
             MarketplaceContract::new(fee_recipient())
         }

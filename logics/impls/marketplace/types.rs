@@ -91,6 +91,8 @@ pub enum MarketplaceError {
     MinimumBidAlreadyMet,
     // Collection Already Exists
     CollectionAlreadyExists,
+    // Collection Not Registered To Marketplace
+    CollectionNotRegisteredToMarketplace,
 }
 
 #[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]

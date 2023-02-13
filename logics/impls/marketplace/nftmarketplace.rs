@@ -61,6 +61,8 @@ pub trait Internal {
 
     fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool;
 
+    fn check_collection_exists(&self, address: AccountId) -> bool;
+
     fn set_auction_end(&mut self, address: AccountId, token_id: Id) -> Result<(),MarketplaceError>;
 
     fn finalize_sale(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError>;
@@ -136,6 +138,15 @@ where
         Ok(())
     }
 
+    default fn get_collection(&self, address: AccountId) -> Option<Collection> {
+        self.data::<Data>().collections.get(&address)
+    }
+
+    default fn get_collection_count(&self) -> u64 {
+        let collection_count = self.data::<Data>().collection_count;
+        collection_count
+    }
+
     #[modifiers(only_owner)]
     default fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError> {
         self.data::<Data>().contract_hash = contract_hash;
@@ -148,6 +159,10 @@ where
     }
 
     default fn create_market_item(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError> {
+        if !self.check_collection_exists(address.clone()) {
+            return Err(MarketplaceError::CollectionNotRegisteredToMarketplace)
+        }
+
         if self.check_token_exists(address,token_id.clone()) {
             return Err(MarketplaceError::TokenAlreadyExists)
         }
@@ -375,6 +390,10 @@ where
 
     default fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool {
         self.data::<Data>().items.get(&(address, token_id)).is_some()
+    }
+
+    default fn check_collection_exists(&self, address: AccountId) -> bool {
+        self.data::<Data>().collections.get(&address).is_some()
     }
 
     default fn finalize_sale(&self, address: AccountId, token_id: Id, sales_price: Balance) -> Result<(),MarketplaceError> {

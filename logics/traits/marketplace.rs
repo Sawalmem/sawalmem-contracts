@@ -1,5 +1,6 @@
 use crate::impls::marketplace::types::{
     MarketplaceError,
+    Collection,
 };
 use ink_env::Hash;
 
@@ -20,6 +21,12 @@ pub trait NFTMarketplace {
 
     #[ink(message)]
     fn add_collection(&mut self, address: AccountId, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn get_collection(&self, address: AccountId) -> Option<Collection>;
+
+    #[ink(message)]
+    fn get_collection_count(&self) -> u64;
 
     #[ink(message)]
     fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError>;
