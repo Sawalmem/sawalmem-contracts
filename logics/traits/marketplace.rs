@@ -19,6 +19,9 @@ pub trait NFTMarketplace {
     fn create_collection(&mut self, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<AccountId, MarketplaceError>;
 
     #[ink(message)]
+    fn add_collection(&mut self, address: AccountId, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
     fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError>;
 
     #[ink(message)]
@@ -47,6 +50,9 @@ pub trait NFTMarketplace {
 
     #[ink(message)]
     fn get_fee_recipient(&self) -> AccountId;
+
+    #[ink(message)]
+    fn set_marketplace_fee(&mut self, fee: u16) -> Result<(), MarketplaceError>;
 
     #[ink(message)]
     fn get_marketplace_fee(&self) -> u16;

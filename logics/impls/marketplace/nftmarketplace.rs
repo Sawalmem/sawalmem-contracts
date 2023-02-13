@@ -83,7 +83,7 @@ where
         let caller = Self::env().caller();
         let salt = Self::env().hash_encoded::<Blake2x256, _>(&(caller.clone(), collection_count));
 
-        let nft = TokenRef::new(name,symbol,collection_hash)
+        let nft = TokenRef::new(name.clone(),symbol.clone(),collection_hash.clone())
         .endowment(0)
         .code_hash(contract_hash)
         .salt_bytes(&salt[..4])
@@ -94,12 +94,46 @@ where
         self.data::<Data>().collections.insert(
             &contract_address,
             &Collection {
+                name: name,
+                symbol: symbol,
+                ipfs: collection_hash,
                 creator: Some(caller.clone()),
                 royalty: royalty,
             },
         );
 
+        self.data::<Data>().collection_count = collection_count;
+
         Ok(contract_address)
+    }
+
+    default fn add_collection(&mut self, address: AccountId, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<(), MarketplaceError> {
+        let caller = Self::env().caller();
+
+        if !(self.data::<ownable::Data>().owner == caller || OwnableRef::owner(&address) == caller)
+        {
+            return Err(MarketplaceError::NotTheOwner)
+        }
+
+        if self.data::<Data>().collections.get(&address).is_some() {
+            return Err(MarketplaceError::CollectionAlreadyExists)
+        } else {
+            self.data::<Data>().collections.insert(
+                &address,
+                &Collection {
+                    name: name,
+                    symbol: symbol,
+                    ipfs: collection_hash,
+                    creator: Some(caller.clone()),
+                    royalty: royalty,
+                },
+            );
+    
+            let collection_count = self.data::<Data>().collection_count.saturating_add(1);
+            self.data::<Data>().collection_count = collection_count;
+        }
+
+        Ok(())
     }
 
     #[modifiers(only_owner)]
@@ -298,6 +332,12 @@ where
 
     default fn get_fee_recipient(&self) -> AccountId {
         self.data::<Data>().market_fee_recipient
+    }
+
+    #[modifiers(only_owner)]
+    default fn set_marketplace_fee(&mut self, fee: u16) -> Result<(), MarketplaceError> {
+        self.data::<Data>().fee = fee;
+        Ok(())
     }
 
     default fn get_marketplace_fee(&self) -> u16 {

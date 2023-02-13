@@ -61,6 +61,14 @@ pub mod marketplace {
             assert_eq!(marketplace.get_fee_recipient(), fee_recipient());
         }
 
+        #[ink::test]
+        fn set_marketplacefees_works() {
+            let mut marketplace = init_contract();
+            assert_eq!(marketplace.get_marketplace_fee(), 100);
+            assert!(marketplace.set_marketplace_fee(200).is_ok());
+            assert_eq!(marketplace.get_marketplace_fee(), 200);
+        }
+
         fn init_contract() -> MarketplaceContract {
             MarketplaceContract::new(fee_recipient())
         }

@@ -89,6 +89,8 @@ pub enum MarketplaceError {
     TokenInstantiationFailed,
     // Minimum Bid Already Met
     MinimumBidAlreadyMet,
+    // Collection Already Exists
+    CollectionAlreadyExists,
 }
 
 #[derive(Encode, Decode, SpreadLayout, PackedLayout, Default, Debug)]
@@ -116,6 +118,9 @@ pub struct AuctionItem {
     derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
 )]
 pub struct Collection {
+    pub name: String,
+    pub symbol: String,
+    pub ipfs: String,
     pub creator: Option<AccountId>,
     pub royalty: u16,
 }
