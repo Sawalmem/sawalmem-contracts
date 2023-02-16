@@ -37,6 +37,9 @@ Constructor pub fn new(market_fee_recipient: AccountId) -> Self
     fn get_collection(&self, address: AccountId) -> Option<Collection>;
 
     #[ink(message)]
+    fn get_item(&self, address: AccountId,token_id: Id) -> Option<AuctionItem>;
+
+    #[ink(message)]
     fn get_collection_count(&self) -> u64;
 
     #[ink(message)]
@@ -74,5 +77,18 @@ Constructor pub fn new(market_fee_recipient: AccountId) -> Self
 
     #[ink(message)]
     fn get_marketplace_fee(&self) -> u16;
+
+    #[ink(message)]
+    fn get_item_count(&self) -> u64;
+
+    #[ink(message)]
+    fn get_all_market_items(&self) -> Vec<(AccountId,Id)>;
+
+    #[ink(message)]
+    fn get_timestamp(&self) ->Timestamp;
+
+    #[ink(message)]
+    fn get_blocknumber(&self) -> BlockNumber;
+
     
  ```
