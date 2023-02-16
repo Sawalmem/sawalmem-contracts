@@ -30,10 +30,10 @@ use crate::{
     },
     traits::marketplace::NFTMarketplace,
 };
-use ink_env::{
-    hash::Blake2x256,
-    Hash,
-};
+use ink::primitives::Hash;
+use ink::prelude::vec::Vec;
+//use ink::Blake2x256;
+   
 use openbrush::{
     contracts::{
         ownable::*,
@@ -47,9 +47,10 @@ use openbrush::{
         Storage,
         String,
         Timestamp,
+        BlockNumber,
     },
 };
-use ink_lang::ToAccountId;
+use ink::ToAccountId;
 use token::token::TokenRef;
 
 pub trait Internal {
@@ -75,6 +76,7 @@ impl<T> NFTMarketplace for T
 where
     T: Storage<Data> + Storage<ownable::Data> + Storage<reentrancy_guard::Data>,
 {
+    /*
     default fn create_collection(&mut self, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<AccountId, MarketplaceError> {
         let contract_hash = self.data::<Data>().contract_hash;
         if contract_hash == Hash::default() {
@@ -108,7 +110,7 @@ where
 
         Ok(contract_address)
     }
-
+*/
     default fn add_collection(&mut self, address: AccountId, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<(), MarketplaceError> {
         let caller = Self::env().caller();
 
@@ -142,6 +144,10 @@ where
         self.data::<Data>().collections.get(&address)
     }
 
+    default fn get_item(&self, address: AccountId,token_id: Id) -> Option<AuctionItem> {
+        self.data::<Data>().items.get(&(address,token_id))
+    }
+
     default fn get_collection_count(&self) -> u64 {
         let collection_count = self.data::<Data>().collection_count;
         collection_count
@@ -167,21 +173,25 @@ where
             return Err(MarketplaceError::TokenAlreadyExists)
         }
 
-        self.data::<Data>().items.insert(&(address, token_id),
-        &AuctionItem{
-            owner: Self::env().caller(),
-            buy_price: 0,
-            seller: None,
-            highest_bid: 0,
-            highest_bidder: None,
-            min_bid: 0,
-            next_min_bid: 0,
-            bid_end_time: 0,
-            royalties: 0,
-            on_sale: false,
-            direct: false,
+        self.data::<Data>().items.insert(&(address.clone(), token_id.clone()),
+            &AuctionItem{
+                owner: Self::env().caller(),
+                buy_price: 0,
+                seller: None,
+                highest_bid: 0,
+                highest_bidder: None,
+                min_bid: 0,
+                next_min_bid: 0,
+                bid_end_time: 0,
+                royalties: 0,
+                on_sale: false,
+                direct: false,
         });
+        let item_count = self.data::<Data>().item_count.saturating_add(1);
+        self.data::<Data>().item_count = item_count;
+        self.data::<Data>().market_items.push((address,token_id));
         Ok(())
+
     }
 
     default fn create_direct_sale(&mut self,address: AccountId, token_id: Id, price: Balance) -> Result<(), MarketplaceError> {
@@ -198,7 +208,7 @@ where
         // Register NFT contract to marketplace and enable approval to all
         let this = Self::env().account_id();
 
-        match PSP34Ref::transfer(&address,this,token_id.clone(),ink_prelude::vec::Vec::new()) {
+        match PSP34Ref::transfer(&address,this,token_id.clone(),ink::prelude::vec::Vec::new()) {
             Ok(()) => {
                 item.buy_price = price;
                 item.seller = Some(Self::env().caller());
@@ -226,7 +236,7 @@ where
         }
         // Register NFT contract to marketplace and enable approval to all
         let this = Self::env().account_id();
-        match PSP34Ref::transfer(&address,this,token_id.clone(),ink_prelude::vec::Vec::new()) {
+        match PSP34Ref::transfer(&address,this,token_id.clone(),ink::prelude::vec::Vec::new()) {
             Ok(()) => {
                 item.buy_price = price;
                 item.seller = Some(Self::env().caller());
@@ -234,7 +244,7 @@ where
                 item.direct = false;
                 item.min_bid = min_bid;
                 item.next_min_bid = min_bid;
-                item.bid_end_time = duration + Timestamp::default();
+                item.bid_end_time = duration + Self::env().block_timestamp();
             },
             Err(_) => return Err(MarketplaceError::TransferToContractFailed)
         }
@@ -272,7 +282,7 @@ where
         }
 
         if item.direct == true {
-            match PSP34Ref::transfer(&address,caller,token_id.clone(),ink_prelude::vec::Vec::new()) {
+            match PSP34Ref::transfer(&address,caller,token_id.clone(),ink::prelude::vec::Vec::new()) {
                 Ok(()) => {self.set_auction_end(address.clone(),token_id.clone())?;
                     Ok(())},
                 Err(_) => return Err(MarketplaceError::TransferToOwnerFailed)
@@ -280,7 +290,7 @@ where
         } else {
             match item.highest_bidder {
                 Some(highest_bidder) => return Err(MarketplaceError::MinimumBidAlreadyMet),
-                None => {match PSP34Ref::transfer(&address,caller,token_id.clone(),ink_prelude::vec::Vec::new()) {
+                None => {match PSP34Ref::transfer(&address,caller,token_id.clone(),ink::prelude::vec::Vec::new()) {
                         Ok(()) => {self.set_auction_end(address.clone(),token_id.clone())?;
                             Ok(())},
                         Err(_) => return Err(MarketplaceError::TransferToOwnerFailed)
@@ -296,7 +306,7 @@ where
             return Err(MarketplaceError::TokenNotForSale)
         }
 
-        if item.bid_end_time < Timestamp::default() {
+        if item.bid_end_time < Self::env().block_timestamp() {
             return Err(MarketplaceError::AuctionExpired)
         }
         let value = Self::env().transferred_value();
@@ -327,7 +337,7 @@ where
         if item.direct == true {
             return Err(MarketplaceError::TokenOnlyForDirectSale)
         }
-        if item.bid_end_time >= Timestamp::default() {
+        if item.bid_end_time >= Self::env().block_timestamp(){
             return Err(MarketplaceError::AuctionOngoing)
         }
 
@@ -358,6 +368,22 @@ where
     default fn get_marketplace_fee(&self) -> u16 {
         self.data::<Data>().fee
     }
+
+    default fn get_item_count(&self) -> u64 {
+        self.data::<Data>().item_count       
+    }
+
+    default fn get_all_market_items(&self) -> Vec<(AccountId,Id)> {
+        self.data::<Data>().market_items.clone()
+    }
+
+    default fn get_timestamp(&self) -> Timestamp {
+        return Self::env().block_timestamp()
+    } 
+
+    default fn get_blocknumber(&self) -> BlockNumber {
+        return Self::env().block_number()
+    } 
 }
 
 impl<T> Internal for T
@@ -404,7 +430,7 @@ where
         }
         let (seller_share,royalties,market_fees,creator) = self.get_sales_breakdown(address.clone(),token_id.clone(),sales_price);
 
-        match PSP34Ref::transfer(&address,buyer,token_id.clone(),ink_prelude::vec::Vec::new()) {
+        match PSP34Ref::transfer(&address,buyer,token_id.clone(),ink::prelude::vec::Vec::new()) {
             Ok(()) => {
                 Self::env().transfer(owner, seller_share)
                     .map_err(|_| MarketplaceError::TransferToOwnerFailed)?;

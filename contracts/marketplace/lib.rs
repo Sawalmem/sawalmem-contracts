@@ -3,8 +3,7 @@
 
 #[openbrush::contract]
 pub mod marketplace {
-    use ink_env::DefaultEnvironment;
-    use ink_storage::traits::SpreadAllocate;
+    use ink::env::DefaultEnvironment;
     use openbrush::contracts::ownable::*;
     use openbrush::contracts::psp34::Id;
     use openbrush::contracts::reentrancy_guard::*;
@@ -16,7 +15,7 @@ pub mod marketplace {
     };
 
     #[ink(storage)]
-    #[derive(Default, SpreadAllocate, Storage)]
+    #[derive(Default, Storage)]
     pub struct MarketplaceContract {
         #[storage_field]
         ownable: ownable::Data,
@@ -29,13 +28,14 @@ pub mod marketplace {
     impl MarketplaceContract {
         #[ink(constructor)]
         pub fn new(market_fee_recipient: AccountId) -> Self {
-            ink_lang::codegen::initialize_contract(|instance: &mut MarketplaceContract| {
+            
+                let mut instance = Self::default();
                 instance.marketplace.fee = 100; // 1%
                 instance.marketplace.market_fee_recipient = market_fee_recipient;
 
                 let caller = instance.env().caller();
                 instance._init_with_owner(caller);
-            })
+                instance
         }
         
     }
@@ -46,8 +46,7 @@ pub mod marketplace {
     mod Tests {
         use super::*;
         use crate::marketplace::MarketplaceContract;
-        use ink_env::test;
-        use ink_lang as ink;
+        use ink::env::test;
         use openbrush::{
             contracts::psp34::Id,
             traits::String,
@@ -97,6 +96,22 @@ pub mod marketplace {
 
             assert!(marketplace.add_collection(contract_address(),name,symbol,hash,royalty).is_ok());
             assert!(marketplace.create_market_item(contract_address(),Id::U64(3)).is_ok());
+            assert_eq!(marketplace.get_all_market_items(),vec![(contract_address(),Id::U64(3))]);
+        }
+
+        #[ink::test]
+        fn create_get_multiple_market_item_works() {
+            let mut marketplace = init_contract();
+
+            let name = String::from("Test Collection");
+            let symbol = String::from("TST");
+            let hash = String::from("https://ipfs.io/aaa");
+            let royalty: u16 = 150;
+
+            assert!(marketplace.add_collection(contract_address(),name,symbol,hash,royalty).is_ok());
+            assert!(marketplace.create_market_item(contract_address(),Id::U64(3)).is_ok());
+            assert!(marketplace.create_market_item(contract_address(),Id::U64(4)).is_ok());
+            assert_eq!(marketplace.get_all_market_items(),vec![(contract_address(),Id::U64(3)),(contract_address(),Id::U64(4))]);
         }
 
         #[ink::test]
@@ -108,16 +123,30 @@ pub mod marketplace {
             assert_eq!(marketplace.get_contract_hash(),hash);
         }
 
+        #[ink::test]
+        fn get_timestamp_works() {
+            let mut marketplace = init_contract();
+
+            let name = String::from("Test Collection");
+            let symbol = String::from("TST");
+            let hash = String::from("https://ipfs.io/aaa");
+            let royalty: u16 = 150;
+
+            assert!(marketplace.add_collection(contract_address(),name,symbol,hash,royalty).is_ok());
+            assert_eq!(marketplace.get_timestamp(),0);
+            assert_eq!(marketplace.get_blocknumber(),0);
+        }
+
         fn init_contract() -> MarketplaceContract {
             MarketplaceContract::new(fee_recipient())
         }
 
-        fn default_accounts() -> test::DefaultAccounts<ink_env::DefaultEnvironment> {
+        fn default_accounts() -> test::DefaultAccounts<ink::env::DefaultEnvironment> {
             test::default_accounts::<Environment>()
         }
 
         fn set_sender(sender: AccountId) {
-            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
+            ink::env::test::set_caller::<ink::env::DefaultEnvironment>(sender);
         }
 
         fn fee_recipient() -> AccountId {
