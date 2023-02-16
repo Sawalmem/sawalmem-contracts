@@ -7,7 +7,7 @@ Constructor : #[ink(constructor)] pub fn new(name: String,symbol: String,base_ur
 ```
 
 ```
-Mint : fn mint(&mut self, to: AccountId, token_uri: String, royalty: u16) -> Result<(), PSP34Error>;
+Mint : fn mint(&mut self, to: AccountId, token_uri: String, marketplace: AccountId) -> Result<(), PSP34Error>;
 ```
 
 Other methods
@@ -17,10 +17,7 @@ Other methods
     fn set_base_uri(&mut self, uri: PreludeString) -> Result<(), PSP34Error>;
     #[ink(message)]
     fn get_token_uri(&mut self, token_id: u64) -> Result<PreludeString, PSP34Error>;
-    #[ink(message)]
-    fn get_token_royalty(&mut self, token_id: u64) -> Result<u16, PSP34Error>;
-    #[ink(message)]
-    fn get_royalty_info(&mut self, token_id: u64) -> Result<(u16,AccountId),PSP34Error>;
+
     
 ```
 
@@ -32,6 +29,22 @@ Constructor pub fn new(market_fee_recipient: AccountId) -> Self
 ```
 
 ```
+
+    #[ink(message)]
+    fn add_collection(&mut self, address: AccountId, name: String, symbol: String, collection_hash: String, royalty: u16 ) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn get_collection(&self, address: AccountId) -> Option<Collection>;
+
+    #[ink(message)]
+    fn get_collection_count(&self) -> u64;
+
+    #[ink(message)]
+    fn set_contract_hash(&mut self,contract_hash: Hash) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn get_contract_hash(&self) -> Hash;
+
     #[ink(message)]
     fn create_market_item(&mut self,address: AccountId, token_id: Id)  -> Result<(), MarketplaceError>;
 
@@ -41,8 +54,23 @@ Constructor pub fn new(market_fee_recipient: AccountId) -> Self
     #[ink(message)]
     fn create_auction(&mut self,address: AccountId, token_id: Id, price: Balance, min_bid: Balance, duration: Timestamp) -> Result<(), MarketplaceError>;
 
+    #[ink(message,payable)]
+    fn close_direct_sale(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn withdraw_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
+    #[ink(message,payable)]
+    fn make_bid(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
+    #[ink(message)]
+    fn settle_auction(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError>;
+
     #[ink(message)]
     fn get_fee_recipient(&self) -> AccountId;
+
+    #[ink(message)]
+    fn set_marketplace_fee(&mut self, fee: u16) -> Result<(), MarketplaceError>;
 
     #[ink(message)]
     fn get_marketplace_fee(&self) -> u16;
