@@ -111,6 +111,8 @@ pub enum MarketplaceError {
     CollectionNotRegisteredToMarketplace,
     // Approval Failed
     ApprovalFailed,
+    // Bid Not Update
+    BidNotUpdated,
 }
 
 #[derive(Encode, Decode, Debug)]
@@ -127,7 +129,6 @@ pub struct AuctionItem {
     pub min_bid: Balance,
     pub next_min_bid: Balance,
     pub bid_end_time: Timestamp,
-    pub royalties: u16,
     pub on_sale: bool,
     pub direct: bool,
 }
@@ -143,7 +144,6 @@ impl Default for AuctionItem {
             min_bid: 0,
             next_min_bid: 0,
             bid_end_time: 0,
-            royalties: 0,
             on_sale: false,
             direct: false,
         }

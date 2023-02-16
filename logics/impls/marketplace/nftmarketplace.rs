@@ -54,11 +54,11 @@ use ink::ToAccountId;
 use token::token::TokenRef;
 
 pub trait Internal {
-    fn calculate_next_minimum_bid(&self, address: AccountId, token_id: Id);
+    fn calculate_next_minimum_bid(&self, address: AccountId, token_id: Id) -> Balance;
 
     fn get_next_minimum_bid(&self, address: AccountId, token_id: Id) -> Balance;
 
-    fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance) -> Result<(),MarketplaceError>;
+    fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance) -> Result<(Balance,Option<AccountId>),MarketplaceError>;
 
     fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool;
 
@@ -183,7 +183,6 @@ where
                 min_bid: 0,
                 next_min_bid: 0,
                 bid_end_time: 0,
-                royalties: 0,
                 on_sale: false,
                 direct: false,
         });
@@ -208,6 +207,15 @@ where
         // Register NFT contract to marketplace and enable approval to all
         let this = Self::env().account_id();
 
+        item.buy_price = price;
+        item.seller = Some(Self::env().caller());
+        item.on_sale = true;
+        item.direct = true;
+
+        self.data::<Data>().items.insert(&(address.clone(), token_id.clone()),&item);
+
+
+/*
         match PSP34Ref::transfer(&address,this,token_id.clone(),ink::prelude::vec::Vec::new()) {
             Ok(()) => {
                 item.buy_price = price;
@@ -217,6 +225,7 @@ where
             },
             Err(_) => return Err(MarketplaceError::TransferToContractFailed)
         }
+        */
         Ok(())
     }
 
@@ -235,6 +244,18 @@ where
             return Err(MarketplaceError::IneligibleBidDuration)
         }
         // Register NFT contract to marketplace and enable approval to all
+
+        item.buy_price = price;
+        item.seller = Some(Self::env().caller());
+        item.on_sale = true;
+        item.direct = false;
+        item.min_bid = min_bid;
+        item.next_min_bid = min_bid;
+        item.bid_end_time = duration + Self::env().block_timestamp();
+
+        self.data::<Data>().items.insert(&(address.clone(), token_id.clone()),&item);
+
+        /*
         let this = Self::env().account_id();
         match PSP34Ref::transfer(&address,this,token_id.clone(),ink::prelude::vec::Vec::new()) {
             Ok(()) => {
@@ -248,9 +269,11 @@ where
             },
             Err(_) => return Err(MarketplaceError::TransferToContractFailed)
         }
+        */
         Ok(())
     }
 
+    #[modifiers(non_reentrant)]
     default fn close_direct_sale(&mut self,address: AccountId, token_id: Id) -> Result<(), MarketplaceError> {
         let mut item = self.data::<Data>().items.get(&(address, token_id.clone())).unwrap();
         if item.on_sale == false {
@@ -316,15 +339,30 @@ where
         }
 
         if value >= item.buy_price {
-            self.update_highest_bid(address.clone(),token_id.clone(),Self::env().caller(),value);
+            let Ok((highest_bid,highest_bidder)) = self.update_highest_bid(address.clone(),token_id.clone(),Self::env().caller(),value) else 
+            {return Err(MarketplaceError::BidNotUpdated)};
             self.finalize_sale(address.clone(),token_id.clone(),value);
 
             self.set_auction_end(address.clone(),token_id.clone())?;
 
             Ok(())
         } else {
-            self.update_highest_bid(address.clone(),token_id.clone(),Self::env().caller(),value);
-            self.calculate_next_minimum_bid(address.clone(),token_id.clone());
+            let Ok((highest_bid,highest_bidder)) = self.update_highest_bid(address.clone(),token_id.clone(),Self::env().caller(),value) else 
+            {return Err(MarketplaceError::BidNotUpdated)};
+            let next_min_bid = self.calculate_next_minimum_bid(address.clone(),token_id.clone());
+            self.data::<Data>().items.insert(&(address.clone(), token_id.clone()),
+            &AuctionItem{
+                owner: item.owner,
+                buy_price: item.buy_price,
+                seller: item.seller,
+                highest_bid: highest_bid,
+                highest_bidder: highest_bidder,
+                min_bid: item.min_bid,
+                next_min_bid: next_min_bid,
+                bid_end_time: item.bid_end_time,
+                on_sale: item.on_sale,
+                direct: item.direct,
+        });
             Ok(())
         }
     }
@@ -390,11 +428,13 @@ impl<T> Internal for T
 where
     T: Storage<Data>,
 {
-    default fn calculate_next_minimum_bid(&self, address: AccountId, token_id: Id) {
-        let mut item = self.data::<Data>().items.get(&(address, token_id)).unwrap();
+    default fn calculate_next_minimum_bid(&self, address: AccountId, token_id: Id) -> Balance {
+        let item = self.data::<Data>().items.get(&(address.clone(), token_id.clone())).unwrap();
         let mut next_min_bid = item.highest_bid;
         next_min_bid += self.data::<Data>().bid_inc_percent * next_min_bid / 10000;
-        item.next_min_bid = next_min_bid;
+        //item.next_min_bid = next_min_bid;
+        //self.data::<Data>().items.insert(&(address, token_id),&item);
+        next_min_bid
     }
 
     default fn get_next_minimum_bid(&self, address: AccountId, token_id: Id) -> Balance {
@@ -402,16 +442,28 @@ where
     }
 
     default fn update_highest_bid(&self, address: AccountId, token_id: Id, new_bidder: AccountId, new_bid_amount: Balance)
-    -> Result<(),MarketplaceError> {
-        let mut item = self.data::<Data>().items.get(&(address, token_id)).unwrap();
-        let prev_bidder = item.highest_bidder.unwrap();
+    -> Result<(Balance,Option<AccountId>),MarketplaceError> {
+        let item = self.data::<Data>().items.get(&(address.clone(), token_id.clone())).unwrap();
+        let prev_bidder = item.highest_bidder;
         let prev_bid = item.highest_bid;
 
-        Self::env().transfer(prev_bidder,prev_bid).map_err(|_| MarketplaceError::TransferToBidderFailed)?;
+        match prev_bidder {
+            Some(prev_bidder) => {
+                Self::env().transfer(prev_bidder,prev_bid).map_err(|_| MarketplaceError::TransferToBidderFailed)?;
+                let highest_bid = new_bid_amount;
+                let highest_bidder = Some(new_bidder);
+                //self.data::<Data>().items.insert(&(address, token_id),&item);
+                Ok((highest_bid,highest_bidder))
+            },
+            None => {
+                let highest_bid = new_bid_amount;
+                let highest_bidder = Some(new_bidder);
+                //self.data::<Data>().items.insert(&(address, token_id),&item);
+                Ok((highest_bid,highest_bidder))
+            }
+        }
 
-        item.highest_bid = new_bid_amount;
-        item.highest_bidder = Some(new_bidder);
-        Ok(())
+        
     }
 
     default fn check_token_exists(&self, address: AccountId, token_id: Id) -> bool {
@@ -469,7 +521,6 @@ where
             min_bid: 0,
             next_min_bid: 0,
             bid_end_time: 0,
-            royalties: 0,
             on_sale: false,
             direct: false,
         });
