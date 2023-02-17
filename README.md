@@ -2,7 +2,7 @@
 
 NFT Marketplace with direct sales and timed auctions.
 
-Steps
+###Steps
 
 Add a Token Collection to the marketplace
 
