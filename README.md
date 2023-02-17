@@ -1,3 +1,17 @@
+## NFT Marketplace backend
+
+NFT Marketplace with direct sales and timed auctions.
+
+Steps
+
+Add a Token Collection to the marketplace
+
+Mint Tokens into the collection
+
+List Tokens on the Market.
+
+Put them up for Sale or auction
+
 ### Contracts
 
 1. Token : Token contract expands PSP34 (Openbrush's ERC721 equivalent). It overrides PSP34's methods
