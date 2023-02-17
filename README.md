@@ -21,8 +21,21 @@ Other methods
     
 ```
 
+_Deployed contracts :_
+
+```
+TOKEN_ADDRESS_SHIBUYA = "Xc5P6n26FkToLvLzJJQJcewa3doT2RctHMkGsoXCo2hCJbx"
+TOKEN_ADDRESS_ROCOCO = "5CVdCzwvWU4wPELHBXWoFjBzbkC2eEsKDYAnP4sc6G4diJuh"
+```
 
 2. Marketplace
+
+_Deployed contracts :_
+
+```
+MARKETPLACE_ADDRESS_SHIBUYA = "bVL23KRxB9U5kNcNWgvAJwfHT9SGogDLJRrCKYcTmbmpurL";
+MARKETPLACE_ADDRESS_ROCOCO = "5GpBMe1vfMVqRXBFt4kZkCJvKFrZ5Qr9ZFwZkkDbCBo825GY";
+```
 
 ```
 Constructor pub fn new(market_fee_recipient: AccountId) -> Self 
