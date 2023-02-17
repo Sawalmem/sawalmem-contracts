@@ -2,6 +2,13 @@
 
 1. Token : Token contract expands PSP34 (Openbrush's ERC721 equivalent). It overrides PSP34's methods
 
+_Deployed contracts :_
+
+```
+TOKEN_ADDRESS_SHIBUYA = "Xc5P6n26FkToLvLzJJQJcewa3doT2RctHMkGsoXCo2hCJbx"
+TOKEN_ADDRESS_ROCOCO = "5CVdCzwvWU4wPELHBXWoFjBzbkC2eEsKDYAnP4sc6G4diJuh"
+```
+
 ```
 Constructor : #[ink(constructor)] pub fn new(name: String,symbol: String,base_uri: String) -> Self 
 ```
@@ -19,13 +26,6 @@ Other methods
     fn get_token_uri(&mut self, token_id: u64) -> Result<PreludeString, PSP34Error>;
 
     
-```
-
-_Deployed contracts :_
-
-```
-TOKEN_ADDRESS_SHIBUYA = "Xc5P6n26FkToLvLzJJQJcewa3doT2RctHMkGsoXCo2hCJbx"
-TOKEN_ADDRESS_ROCOCO = "5CVdCzwvWU4wPELHBXWoFjBzbkC2eEsKDYAnP4sc6G4diJuh"
 ```
 
 2. Marketplace
